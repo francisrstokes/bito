@@ -184,7 +184,7 @@ function run() {
   const update = () => {
     mc.background([0, 0, 0, 1]);
     mc.noFill();
-    mc.stroke([255, 255, 255, 1]);
+    mc.stroke([0, 0, 0, 1]);
 
     const currentBar = Math.floor(cellIndex / 4);
     const currentBeat = cellIndex % 4;
@@ -234,12 +234,25 @@ function run() {
       cellIndex = (cellIndex + 1) % 64;
     }
 
+    let orderCount = 0;
     for (let bar = 0; bar < bars; bar++) {
       const y = floor(bar / 2) * beatSize;
 
-      mc.strokeWeight(6);
-      rect([beatSize*4*0.99, beatSize*0.99], [beatSize*2, y+beatSize/2]);
-      rect([beatSize*4*0.99, beatSize*0.99], [beatSize*6, y+beatSize/2]);
+      mc.push();
+      mc.noStroke();
+      if (bar === 0) {
+        mc.fill([0xff, 0x22, 0x44, 0.1]);
+      } else {
+        if (orderCount < 2) {
+          mc.fill([2555, 255, 255, 0.1]);
+        } else {
+          mc.fill([0xff, 0x22, 0x44, 0.1]);
+        }
+        orderCount = (orderCount + 1) % 4;
+      }
+      const xPos = bar % 2 === 0 ? beatSize*2 : beatSize*6;
+      rect([beatSize*4, beatSize], [xPos, y+beatSize/2])
+      mc.pop();
 
       mc.strokeWeight(0.5);
       for (let beat = 0; beat < 4; beat++) {
@@ -255,7 +268,7 @@ function run() {
             const c = lastValue > 0
               ? [255, 255, 255, 1]
               : [0xff, 0x22, 0x44, 1];
-            let r = beatSize / 2;
+            let r = beatSize / 2 / 2;
 
             if (lastValue === Infinity) {
               mc.noFill();
@@ -268,11 +281,9 @@ function run() {
             } else {
               mc.noStroke();
               mc.fill(c);
-              // r = Math.abs(lastValue) * beatSize / 2;
             }
 
-            circle(r * 0.8, [x+beatSize/2, y+beatSize/2]);
-            // rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+            circle(r, [x+beatSize/2, y+beatSize/2]);
           }
 
           mc.pop();
