@@ -4,6 +4,8 @@ const microcan = require('microcan-fp');
 // buffered calculation? fixed BPM?
 // Show indication when over 64 bytes (but don't block)
 
+const CHAR_LIMIT = 64;
+
 const tutorial = [
   {
     code: '110 * (b+1)',
@@ -155,9 +157,17 @@ function run() {
     inputEl.value = decodeURIComponent(location.hash.slice(1));
   }
 
+  const inputClasses = inputEl.classList;
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       setBitoFunction(e.target.value);
+    }
+
+    console.log(e.target.value.length);
+    if (e.target.value.length > CHAR_LIMIT) {
+      inputClasses.add('over-limit');
+    } else {
+      inputClasses.remove('over-limit');
     }
   });
 
