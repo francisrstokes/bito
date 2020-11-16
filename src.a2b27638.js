@@ -456,6 +456,37 @@ var microcan = require('microcan-fp'); // TODO
 // Show indication when over 64 bytes (but don't block)
 
 
+var tutorial = [{
+  code: '110 * (b+1)',
+  lines: ['b represents the bar number (0-15)']
+}, {
+  code: '110 + i',
+  lines: ['i represents the cell index (0-127)']
+}, {
+  code: '220 + sin(t) * 440',
+  lines: ['t represents time in seconds since the page loaded']
+}, {
+  code: '[440,523.25,659.25,783.99][o]',
+  lines: ['o represents the offset into the bar (0-3)', 'You can think of this as the beat']
+}, {
+  code: 'sin(t) * cos(b + t) + tan(i) * 440',
+  lines: ['The whole Math library is available with Math.']
+}, {
+  code: '[0,3,5,7].map(x => T(440, x))[(b + o) % 4]',
+  lines: ['The T(base, f) function gives you notes n semitones', 'from the freq n. Quick shortcut to musicality!']
+}, {
+  code: '[0,3,5,7].map(x => T(440, x))[(b + o) % 4]',
+  lines: ['The T(base, f) function gives you notes n semitones', 'from the freq n. Quick shortcut to musicality!']
+}, {
+  code: '[110, 220, 440, NaN][o]',
+  lines: ['NaN and other non number values are pauses']
+}, {
+  code: '[110, 220, 440, 1/0][o]',
+  lines: ['Infinity and -Infinity change the wave type']
+}, {
+  code: '[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]',
+  lines: ['Try to keep it under 64 bytes, and Happy hacking!']
+}];
 var w = 500;
 var h = 500;
 var canvas = document.getElementById('main');
@@ -490,7 +521,32 @@ function run() {
   oscillator.type = waveTypes[0];
   oscillator.frequency.setValueAtTime(880.0, audioCtx.currentTime);
   gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-  oscillator.start(); // Inject math functions into global scope
+  oscillator.start(); // b is the bar number
+  // i is the index of the cell
+  // t is in seconds
+  // o is the offset in the bar (the beat)
+  // function should return a number representing a frequency
+  // Infinities change wave type, and NaN or anything else represents no sound
+
+  var updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
+
+  var setBitoFunction = function setBitoFunction(code) {
+    updateFn = new Function('b', 'i', 't', 'o', 'return ' + code);
+    var escapedFn = encodeURIComponent(code);
+    window.location.hash = escapedFn;
+    inputEl.value = code;
+  };
+
+  var commentEl = document.querySelector('.comment');
+  var tutorialPointer = 0;
+  canvas.addEventListener('click', function () {
+    var tut = tutorial[tutorialPointer];
+    setBitoFunction(tut.code);
+    commentEl.innerHTML = tut.lines.map(function (line) {
+      return "<div class=\"comment-line\">".concat(line, "</div>");
+    }).join('');
+    tutorialPointer = (tutorialPointer + 1) % tutorial.length;
+  }); // Inject math functions into global scope
 
   Object.getOwnPropertyNames(Math).forEach(function (prop) {
     window[prop] = Math[prop];
@@ -502,20 +558,11 @@ function run() {
 
   if (location.hash) {
     inputEl.value = decodeURIComponent(location.hash.slice(1));
-  } // b is the bar number
-  // i is the index of the cell
-  // t is in seconds
-  // o is the offset in the bar (the beat)
-  // function should return a number representing a frequency
-  // Infinities change wave type, and NaN or anything else represents no sound
+  }
 
-
-  var updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
   inputEl.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
-      updateFn = new Function('b', 'i', 't', 'o', 'return ' + e.target.value);
-      var escapedFn = encodeURIComponent(e.target.value);
-      window.location.hash = escapedFn;
+      setBitoFunction(e.target.value);
     }
   });
   var bars = 16;
@@ -653,7 +700,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63920" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "64310" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
