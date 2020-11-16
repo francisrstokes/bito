@@ -456,6 +456,7 @@ var microcan = require('microcan-fp'); // TODO
 // Show indication when over 64 bytes (but don't block)
 
 
+var CHAR_LIMIT = 64;
 var tutorial = [{
   code: '110 * (b+1)',
   lines: ['b represents the bar number (0-15)']
@@ -470,7 +471,7 @@ var tutorial = [{
   lines: ['o represents the offset into the bar (0-3)', 'You can think of this as the beat']
 }, {
   code: 'sin(t) * cos(b + t) + tan(i) * 440',
-  lines: ['The whole Math library is available with Math.']
+  lines: ['The whole Math library is available in the global scope']
 }, {
   code: '[0,3,5,7].map(x => T(440, x))[(b + o) % 4]',
   lines: ['The T(base, f) function gives you notes n semitones', 'from the freq n. Quick shortcut to musicality!']
@@ -487,8 +488,8 @@ var tutorial = [{
   code: '[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]',
   lines: ['Try to keep it under 64 bytes, and Happy hacking!']
 }];
-var w = 500;
-var h = 500;
+var w = 300;
+var h = 300;
 var canvas = document.getElementById('main');
 var ctx = canvas.getContext('2d');
 var mc = microcan(ctx, [w, h]);
@@ -503,9 +504,10 @@ var circle = function circle(r, position) {
 
 mc.fill([255, 255, 255, 1]);
 mc.noStroke();
-ctx.font = '30px Courier';
+var textH = Math.floor(w / 20);
+ctx.font = "".concat(textH, "px Courier");
 var textSize = ctx.measureText('Click here to start');
-ctx.fillText('Click here to start', (w - textSize.width) / 2, (h - 15) / 2);
+ctx.fillText('Click here to start', (w - textSize.width) / 2, (h - textH) / 2);
 canvas.addEventListener('click', run, {
   once: true
 });
@@ -531,6 +533,8 @@ function run() {
   var updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
 
   var setBitoFunction = function setBitoFunction(code) {
+    waveTypeIndex = 0;
+    oscillator.type = waveTypes[waveTypeIndex];
     updateFn = new Function('b', 'i', 't', 'o', 'return ' + code);
     var escapedFn = encodeURIComponent(code);
     window.location.hash = escapedFn;
@@ -560,9 +564,18 @@ function run() {
     inputEl.value = decodeURIComponent(location.hash.slice(1));
   }
 
+  var inputClasses = inputEl.classList;
   inputEl.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       setBitoFunction(e.target.value);
+    }
+
+    console.log(e.target.value.length);
+
+    if (e.target.value.length > CHAR_LIMIT) {
+      inputClasses.add('over-limit');
+    } else {
+      inputClasses.remove('over-limit');
     }
   });
   var bars = 16;
@@ -577,7 +590,7 @@ function run() {
   var update = function update() {
     mc.background([0, 0, 0, 1]);
     mc.noFill();
-    mc.stroke([255, 255, 255, 1]);
+    mc.stroke([0, 0, 0, 1]);
     var currentBar = Math.floor(cellIndex / 4);
     var currentBeat = cellIndex % 4;
 
@@ -627,11 +640,28 @@ function run() {
       cellIndex = (cellIndex + 1) % 64;
     }
 
+    var orderCount = 0;
+
     for (var bar = 0; bar < bars; bar++) {
       var y = floor(bar / 2) * beatSize;
-      mc.strokeWeight(6);
-      rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 2, y + beatSize / 2]);
-      rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 6, y + beatSize / 2]);
+      mc.push();
+      mc.noStroke();
+
+      if (bar === 0) {
+        mc.fill([0xff, 0x22, 0x44, 0.1]);
+      } else {
+        if (orderCount < 2) {
+          mc.fill([2555, 255, 255, 0.1]);
+        } else {
+          mc.fill([0xff, 0x22, 0x44, 0.1]);
+        }
+
+        orderCount = (orderCount + 1) % 4;
+      }
+
+      var xPos = bar % 2 === 0 ? beatSize * 2 : beatSize * 6;
+      rect([beatSize * 4, beatSize], [xPos, y + beatSize / 2]);
+      mc.pop();
       mc.strokeWeight(0.5);
 
       for (var beat = 0; beat < 4; beat++) {
@@ -643,7 +673,7 @@ function run() {
 
           if (!Number.isNaN(lastValue)) {
             var c = lastValue > 0 ? [255, 255, 255, 1] : [0xff, 0x22, 0x44, 1];
-            var r = beatSize / 2;
+            var r = beatSize / 2 / 2;
 
             if (lastValue === Infinity) {
               mc.noFill();
@@ -655,10 +685,10 @@ function run() {
               mc.stroke(c);
             } else {
               mc.noStroke();
-              mc.fill(c); // r = Math.abs(lastValue) * beatSize / 2;
+              mc.fill(c);
             }
 
-            circle(r * 0.8, [x + beatSize / 2, y + beatSize / 2]); // rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+            circle(r, [x + beatSize / 2, y + beatSize / 2]);
           }
 
           mc.pop();
@@ -700,7 +730,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "64310" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52523" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
