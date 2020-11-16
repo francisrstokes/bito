@@ -453,81 +453,13 @@ var global = arguments[3];
 },{}],"src/index.js":[function(require,module,exports) {
 var microcan = require('microcan-fp'); // TODO
 // buffered calculation? fixed BPM?
-// No sound on error
 // Show indication when over 64 bytes (but don't block)
 
 
 var w = 500;
 var h = 500;
-
-var lerp = function lerp(a, b, t) {
-  return a + (b - a) * t;
-};
-
-var mapRange = function mapRange(fa, fb, ta, tb, x) {
-  return lerp(ta, tb, (x - fa) / (fb - fa));
-};
-
-var clamp = function clamp(min, max, x) {
-  if (x > max) return max;
-  if (x < min) return min;
-  return x;
-};
-
-var MIN_FREQ = 220;
-var MAX_FREQ = 880;
-var waveTypes = ['triangle', 'square', 'sawtooth', 'sine'];
-var inputEl = document.getElementById('codeInput');
 var canvas = document.getElementById('main');
 var ctx = canvas.getContext('2d');
-var audioCtx = new AudioContext();
-var gainNode = audioCtx.createGain();
-gainNode.connect(audioCtx.destination);
-var oscillator = audioCtx.createOscillator();
-oscillator.connect(gainNode);
-oscillator.type = waveTypes[0];
-oscillator.frequency.setValueAtTime(880.0, audioCtx.currentTime);
-gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-oscillator.start(); // Inject math functions into global scope
-
-Object.getOwnPropertyNames(Math).forEach(function (prop) {
-  window[prop] = Math[prop];
-}); // Inject the tone function
-
-window.T = function (n) {
-  return mapRange(MIN_FREQ, MAX_FREQ, -1, 1, clamp(MIN_FREQ, MAX_FREQ, 440 * Math.pow(1.059463, n)));
-};
-
-if (location.hash) {
-  inputEl.value = decodeURIComponent(location.hash.slice(1)); //, 32));
-  // inputEl.value = decodeURIComponent(location.hash.slice(1, 32));
-} // b is the bar number
-// i is the index of the cell
-// t is in seconds
-// o is the offset in the bar (the beat)
-//
-// function should return a number from -1 to 1
-// which maps to frequencies from 220Hz to 880Hz (A3 to A5)
-
-
-var updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
-inputEl.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter') {
-    updateFn = new Function('t', 'i', 'b', 'o', 'return ' + e.target.value);
-    var escapedFn = encodeURIComponent(e.target.value);
-    window.location.hash = escapedFn;
-  } // if (e.key === 'Backspace') {
-  //   return true;
-  // }
-  // if (e.target.value.length === 32) {
-  //   e.preventDefault();
-  //   return false;
-  // }
-
-});
-var bars = 16;
-var barSize = w / bars / 2;
-var beatSize = barSize * 4;
 var mc = microcan(ctx, [w, h]);
 
 var rect = function rect(size, position) {
@@ -538,113 +470,161 @@ var circle = function circle(r, position) {
   return mc.drawEllipse(mc.circle(r, position));
 };
 
-var cellIndex = 0;
-var i = 0;
-var noNote = false;
-var waveTypeIndex = 0;
-var lastValue = 0;
+mc.fill([255, 255, 255, 1]);
+mc.noStroke();
+ctx.font = '30px Courier';
+var textSize = ctx.measureText('Click here to start');
+ctx.fillText('Click here to start', (w - textSize.width) / 2, (h - 15) / 2);
+canvas.addEventListener('click', run, {
+  once: true
+});
 
-var update = function update() {
-  mc.background([0, 0, 0, 1]);
-  mc.noFill();
-  mc.stroke([255, 255, 255, 1]);
-  var currentBar = Math.floor(cellIndex / 4);
-  var currentBeat = cellIndex % 4;
+function run() {
+  var waveTypes = ['triangle', 'square', 'sawtooth', 'sine'];
+  var inputEl = document.getElementById('codeInput');
+  var audioCtx = new AudioContext();
+  var gainNode = audioCtx.createGain();
+  gainNode.connect(audioCtx.destination);
+  var oscillator = audioCtx.createOscillator();
+  oscillator.connect(gainNode);
+  oscillator.type = waveTypes[0];
+  oscillator.frequency.setValueAtTime(880.0, audioCtx.currentTime);
+  gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  oscillator.start(); // Inject math functions into global scope
 
-  if (i % 10 === 0) {
-    var value;
+  Object.getOwnPropertyNames(Math).forEach(function (prop) {
+    window[prop] = Math[prop];
+  }); // Inject the tone function
 
-    try {
-      value = updateFn(audioCtx.currentTime, cellIndex, currentBar, currentBeat);
-    } catch (e) {}
+  window.T = function (b, n) {
+    return b * Math.pow(1.059463, n);
+  };
 
-    var skip = false;
+  if (location.hash) {
+    inputEl.value = decodeURIComponent(location.hash.slice(1));
+  } // b is the bar number
+  // i is the index of the cell
+  // t is in seconds
+  // o is the offset in the bar (the beat)
+  // function should return a number representing a frequency
+  // Infinities change wave type, and NaN or anything else represents no sound
 
-    if (Number.isNaN(value)) {
-      if (!noNote) {
-        oscillator.disconnect(gainNode);
-        noNote = true;
+
+  var updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      updateFn = new Function('b', 'i', 't', 'o', 'return ' + e.target.value);
+      var escapedFn = encodeURIComponent(e.target.value);
+      window.location.hash = escapedFn;
+    }
+  });
+  var bars = 16;
+  var barSize = w / bars / 2;
+  var beatSize = barSize * 4;
+  var cellIndex = 0;
+  var i = 0;
+  var noNote = false;
+  var waveTypeIndex = 0;
+  var lastValue = 0;
+
+  var update = function update() {
+    mc.background([0, 0, 0, 1]);
+    mc.noFill();
+    mc.stroke([255, 255, 255, 1]);
+    var currentBar = Math.floor(cellIndex / 4);
+    var currentBeat = cellIndex % 4;
+
+    if (i % 10 === 0) {
+      var value;
+
+      try {
+        value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
+      } catch (e) {
+        value = NaN;
       }
 
-      skip = true;
-    }
+      var skip = false;
 
-    if (value === Infinity) {
-      waveTypeIndex = (waveTypeIndex + 1) % waveTypes.length;
-      oscillator.type = waveTypes[waveTypeIndex];
-      skip = true;
-    }
-
-    if (value === -Infinity) {
-      waveTypeIndex = waveTypeIndex - 1 === -1 ? waveTypes.length - 1 : waveTypeIndex - 1;
-      oscillator.type = waveTypes[waveTypeIndex];
-      skip = true;
-    }
-
-    if (!skip) {
-      if (typeof value !== 'number') {
-        value = lastValue;
-      }
-
-      if (noNote) {
-        oscillator.connect(gainNode);
-        noNote = false;
-      } // const clamped = clamp(-1, 1, value);
-      // const freq = lerp(MIN_FREQ, MAX_FREQ, (clamped + 1) / 2);
-
-
-      var freq = value;
-      oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    }
-
-    lastValue = value;
-    cellIndex = (cellIndex + 1) % 64;
-  }
-
-  for (var bar = 0; bar < bars; bar++) {
-    var y = floor(bar / 2) * beatSize;
-    mc.strokeWeight(6);
-    rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 2, y + beatSize / 2]);
-    rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 6, y + beatSize / 2]);
-    mc.strokeWeight(0.5);
-
-    for (var beat = 0; beat < 4; beat++) {
-      var x = bar % 2 === 0 ? beat * beatSize : beatSize * 4 + beat * beatSize;
-      rect([beatSize, beatSize], [x + beatSize / 2, y + beatSize / 2]);
-
-      if (bar === currentBar && beat === currentBeat) {
-        mc.push();
-
-        if (!Number.isNaN(lastValue)) {
-          var c = lastValue > 0 ? [255, 255, 255, 1] : [0xff, 0x22, 0x44, 1];
-          var r = beatSize / 2;
-
-          if (lastValue === Infinity) {
-            mc.noFill();
-            mc.strokeWeight(8);
-            mc.stroke(c);
-          } else if (lastValue === -Infinity) {
-            mc.noFill();
-            mc.strokeWeight(8);
-            mc.stroke(c);
-          } else {
-            mc.noStroke();
-            mc.fill(c); // r = Math.abs(lastValue) * beatSize / 2;
-          }
-
-          circle(r * 0.8, [x + beatSize / 2, y + beatSize / 2]); // rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+      if (Number.isNaN(value) || typeof value !== 'number') {
+        if (!noNote) {
+          oscillator.disconnect(gainNode);
+          noNote = true;
         }
 
-        mc.pop();
+        skip = true;
+      }
+
+      if (value === Infinity) {
+        waveTypeIndex = (waveTypeIndex + 1) % waveTypes.length;
+        oscillator.type = waveTypes[waveTypeIndex];
+        skip = true;
+      }
+
+      if (value === -Infinity) {
+        waveTypeIndex = waveTypeIndex - 1 === -1 ? waveTypes.length - 1 : waveTypeIndex - 1;
+        oscillator.type = waveTypes[waveTypeIndex];
+        skip = true;
+      }
+
+      if (!skip) {
+        if (noNote) {
+          oscillator.connect(gainNode);
+          noNote = false;
+        }
+
+        var freq = value;
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      }
+
+      lastValue = value;
+      cellIndex = (cellIndex + 1) % 64;
+    }
+
+    for (var bar = 0; bar < bars; bar++) {
+      var y = floor(bar / 2) * beatSize;
+      mc.strokeWeight(6);
+      rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 2, y + beatSize / 2]);
+      rect([beatSize * 4 * 0.99, beatSize * 0.99], [beatSize * 6, y + beatSize / 2]);
+      mc.strokeWeight(0.5);
+
+      for (var beat = 0; beat < 4; beat++) {
+        var x = bar % 2 === 0 ? beat * beatSize : beatSize * 4 + beat * beatSize;
+        rect([beatSize, beatSize], [x + beatSize / 2, y + beatSize / 2]);
+
+        if (bar === currentBar && beat === currentBeat) {
+          mc.push();
+
+          if (!Number.isNaN(lastValue)) {
+            var c = lastValue > 0 ? [255, 255, 255, 1] : [0xff, 0x22, 0x44, 1];
+            var r = beatSize / 2;
+
+            if (lastValue === Infinity) {
+              mc.noFill();
+              mc.strokeWeight(8);
+              mc.stroke(c);
+            } else if (lastValue === -Infinity) {
+              mc.noFill();
+              mc.strokeWeight(8);
+              mc.stroke(c);
+            } else {
+              mc.noStroke();
+              mc.fill(c); // r = Math.abs(lastValue) * beatSize / 2;
+            }
+
+            circle(r * 0.8, [x + beatSize / 2, y + beatSize / 2]); // rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+          }
+
+          mc.pop();
+        }
       }
     }
-  }
 
-  i++;
-  requestAnimationFrame(update);
-};
+    i++;
+    requestAnimationFrame(update);
+  };
 
-update();
+  update();
+}
 },{"microcan-fp":"node_modules/microcan-fp/dist/microcan.js"}],"node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -673,7 +653,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58626" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63920" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
