@@ -1,18 +1,19 @@
 const microcan = require('microcan-fp');
 
+
+// TODO
+// buffered calculation? fixed BPM?
+// Show indication when over 64 bytes (but don't block)
+
 const w = 500;
 const h = 500;
 
-const lerp = (a, b, t) => a + (b - a) * t;
-const mapRange = (fa, fb, ta, tb, x) => lerp(ta, tb, (x - fa) / (fb - fa));
-const clamp = (min, max, x) => {
-  if (x > max) return max;
-  if (x < min) return min;
-  return x;
-};
-
-const MIN_FREQ = 220;
-const MAX_FREQ = 880;
+const waveTypes = [
+  'triangle',
+  'square',
+  'sawtooth',
+  'sine'
+];
 
 const inputEl = document.getElementById('codeInput');
 const canvas = document.getElementById('main');
@@ -25,6 +26,7 @@ gainNode.connect(audioCtx.destination);
 
 const oscillator = audioCtx.createOscillator();
 oscillator.connect(gainNode);
+oscillator.type = waveTypes[0];
 
 oscillator.frequency.setValueAtTime(880.0, audioCtx.currentTime);
 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
@@ -37,31 +39,22 @@ Object.getOwnPropertyNames(Math).forEach(prop => {
 });
 
 // Inject the tone function
-window.T = n => mapRange(MIN_FREQ, MAX_FREQ, -1, 1, clamp(MIN_FREQ, MAX_FREQ, 440 * (1.059463**n)));
+window.T = (b, n) => b*(1.059463**n);
 
 if (location.hash) {
-    inputEl.value = decodeURIComponent(location.hash.slice(1, 32));
+  inputEl.value = decodeURIComponent(location.hash.slice(1));
 }
 
 // b is the bar number
 // i is the index of the cell
 // t is in seconds
 // o is the offset in the bar (the beat)
-//
-// function should return a number from -1 to 1
-// which maps to frequencies from 220Hz to 880Hz (A3 to A5)
+
+// function should return a number representing a frequency
+// Infinities change wave type, and NaN or anything else represents no sound
 let updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
 
 inputEl.addEventListener('keydown', e => {
-  if (e.key === 'Backspace') {
-    return true;
-  }
-
-  if (e.target.value.length === 32) {
-    e.preventDefault();
-    return false;
-  }
-
   if (e.key === 'Enter') {
     updateFn = new Function('t', 'i', 'b', 'o', 'return ' + e.target.value);
     const escapedFn = encodeURIComponent(e.target.value);
@@ -75,9 +68,13 @@ const beatSize = barSize * 4;
 
 const mc = microcan(ctx, [w, h]);
 const rect = (size, position) => mc.drawShape(mc.rect(size, position));
+const circle = (r, position) => mc.drawEllipse(mc.circle(r, position));
 
 let cellIndex = 0;
 let i = 0;
+let noNote = false;
+let waveTypeIndex = 0;
+let lastValue = 0;
 
 const update = () => {
   mc.background([0, 0, 0, 1]);
@@ -86,6 +83,51 @@ const update = () => {
 
   const currentBar = Math.floor(cellIndex / 4);
   const currentBeat = cellIndex % 4;
+
+  if (i % 10 === 0) {
+    let value;
+    try {
+      value = updateFn(audioCtx.currentTime, cellIndex, currentBar, currentBeat);
+    } catch (e) {
+      value = NaN;
+    }
+
+    let skip = false;
+    if (Number.isNaN(value) || typeof value !== 'number') {
+      if (!noNote) {
+        oscillator.disconnect(gainNode);
+        noNote = true;
+      }
+      skip = true;
+    }
+
+    if (value === Infinity) {
+      waveTypeIndex = (waveTypeIndex + 1) % waveTypes.length;
+      oscillator.type = waveTypes[waveTypeIndex];
+      skip = true;
+    }
+
+    if (value === -Infinity) {
+      waveTypeIndex = waveTypeIndex - 1 === -1
+        ? waveTypes.length - 1
+        : waveTypeIndex - 1;
+      oscillator.type = waveTypes[waveTypeIndex];
+      skip = true;
+    }
+
+    if (!skip) {
+      if (noNote) {
+        oscillator.connect(gainNode);
+        noNote = false;
+      }
+
+      const freq = value;
+      oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    }
+
+    lastValue = value;
+    cellIndex = (cellIndex + 1) % 64;
+  }
 
   for (let bar = 0; bar < bars; bar++) {
     const y = floor(bar / 2) * beatSize;
@@ -103,29 +145,34 @@ const update = () => {
 
       if (bar === currentBar && beat === currentBeat) {
         mc.push();
-        mc.strokeWeight(8);
-        mc.stroke([0xff, 0x22, 0x44, 1]);
-        rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+
+        if (!Number.isNaN(lastValue)) {
+          const c = lastValue > 0
+            ? [255, 255, 255, 1]
+            : [0xff, 0x22, 0x44, 1];
+          let r = beatSize / 2;
+
+          if (lastValue === Infinity) {
+            mc.noFill();
+            mc.strokeWeight(8);
+            mc.stroke(c);
+          } else if (lastValue === -Infinity) {
+            mc.noFill();
+            mc.strokeWeight(8);
+            mc.stroke(c);
+          } else {
+            mc.noStroke();
+            mc.fill(c);
+            // r = Math.abs(lastValue) * beatSize / 2;
+          }
+
+          circle(r * 0.8, [x+beatSize/2, y+beatSize/2]);
+          // rect([beatSize*0.4, beatSize*0.4], [x+beatSize/2, y+beatSize/2]);
+        }
+
         mc.pop();
       }
     }
-  }
-
-  if (i % 10 === 0) {
-    let value;
-    try {
-      value = updateFn(audioCtx.currentTime, cellIndex, currentBar, currentBeat);
-    } catch (e) {}
-
-    if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
-      value = 0;
-    }
-
-    const clamped = clamp(-1, 1, value);
-    const freq = lerp(MIN_FREQ, MAX_FREQ, (clamped + 1) / 2);
-    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
-    cellIndex = (cellIndex + 1) % 64;
   }
 
   i++;
