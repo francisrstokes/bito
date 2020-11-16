@@ -33,7 +33,7 @@ const tutorial = [
   {
     code: 'sin(t) * cos(b + t) + tan(i) * 440',
     lines: [
-      'The whole Math library is available with Math.'
+      'The whole Math library is available in the global scope'
     ]
   },
   {
@@ -70,8 +70,8 @@ const tutorial = [
   },
 ];
 
-const w = 500;
-const h = 500;
+const w = 300;
+const h = 300;
 
 const canvas = document.getElementById('main');
 const ctx = canvas.getContext('2d');
@@ -81,9 +81,11 @@ const circle = (r, position) => mc.drawEllipse(mc.circle(r, position));
 
 mc.fill([255, 255, 255, 1]);
 mc.noStroke();
-ctx.font = '30px Courier';
+
+const textH = Math.floor(w/20);
+ctx.font = `${textH}px Courier`;
 const textSize = ctx.measureText('Click here to start');
-ctx.fillText('Click here to start', (w - textSize.width)/2, (h - 15)/2);
+ctx.fillText('Click here to start', (w - textSize.width)/2, (h - textH)/2);
 canvas.addEventListener('click', run, { once: true });
 
 function run() {
@@ -120,6 +122,8 @@ function run() {
   let updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
 
   const setBitoFunction = code => {
+    waveTypeIndex = 0;
+    oscillator.type = waveTypes[waveTypeIndex];
     updateFn = new Function('b', 'i', 't', 'o', 'return ' + code);
     const escapedFn = encodeURIComponent(code);
     window.location.hash = escapedFn;

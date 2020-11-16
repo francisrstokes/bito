@@ -3,10 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@fstokesman">
+  <meta name="twitter:title" content="(b,i,t,o) => 'programatic browser beats'">
+  <meta name="description"
+    content="B.I.T.O - Programatic Beats Code Golfed In Your Browser">
   <title>B.I.T.O - Programatic Beats Code Golfed In Your Browser</title>
   <style>
-    .comment {
+    body {
+      margin: 0;
+      font-family: 'Inconsolata', Courier, monospace;
+      background: #000;
+      display: flex;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    main {
+      display:flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-grow: 1;
+    }
+
+    canvas {
       margin-top: 20px;
+      border: 1px solid #111;
+    }
+
+    .comment {
       width:500px;
       color: #f24;
       font-size: 18px;
@@ -24,30 +50,54 @@
       font-family: 'Inconsolata', Courier, monospace;
     }
     .code-input {
-      background-color: #000;
+      background-color: #111;
       border: none;
+    }
+
+    .code-area {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #111;
+    }
+
+    footer {
+      font-family: 'Inconsolata', Courier, monospace;
+      color: #fff;
+      display: flex;
+      flex-wrap: wrap;
+
+      width: 100%;;
+      background-color: #111;
+      padding-top: 20px;
+      padding-bottom: 20px;
+      justify-content: center;
     }
   </style>
 </head>
-<body style="background-color: black;">
-  <div style="display:flex; flex-direction: column; align-items: center; justify-content: center;">
+<body>
+  <main>
     <canvas id="main" width="500" height="500"></canvas>
-    <br/>
-    <div class="comment">
-      <div class="comment-line">
-        Click the grid for help
+
+    <div class="code-area">
+      <div class="comment">
+        <div class="comment-line">
+          Click the grid for help
+        </div>
       </div>
+      <div class="code">
+        (b, i, t, o) =&gt;
+      </div>
+      <input
+        id="codeInput"
+        class="code code-input"
+        value="[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]"
+      />
     </div>
-    <div class="code">
-      (b, i, t, o) =&gt;
-    </div>
-    <br/>
-    <input
-      id="codeInput"
-      class="code code-input"
-      value="[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]"
-    />
-  </div>
+  </main>
+  <footer>
+    By &nbsp;<a href="https://twitter.com/fstokesman">@fstokesman</a> &nbsp;-&nbsp; Inspired by &nbsp;<a href="https://tixy.land">tixy.land</a>
+  </footer>
+
   <script src="src/index.js"></script>
 </body>
 </html>
