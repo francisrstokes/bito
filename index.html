@@ -39,6 +39,10 @@
       font-family: 'Inconsolata', Courier, monospace;
     }
 
+    .red-dot {
+      color: #f24;
+    }
+
     .comment-line::before {
       content: "// "
     }
@@ -91,11 +95,11 @@
   </style>
 </head>
 <body>
-  <header>
-    B . I . T . O
-  </header>
-
   <main>
+    <header>
+      B&nbsp;<span class="red-dot">.</span>&nbsp;I&nbsp;<span class="red-dot">.</span>&nbsp;T&nbsp;<span class="red-dot">.</span>&nbsp;O
+    </header>
+
     <canvas id="main" width="500" height="500"></canvas>
 
     <div class="code-area">

@@ -10,6 +10,8 @@ const tutorial = [
   {
     code: '110 * (b+1)',
     lines: [
+      'This function should always return a frequency',
+      'That frequency can be calculated using the arguments',
       'b represents the bar number (0-15)'
     ]
   },
@@ -35,7 +37,7 @@ const tutorial = [
   {
     code: 'sin(t) * cos(b + t) + tan(i) * 440',
     lines: [
-      'The whole Math library is available in the global scope'
+      'All Math functions are available in the global scope'
     ]
   },
   {
@@ -65,9 +67,9 @@ const tutorial = [
     ]
   },
   {
-    code: '[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]',
+    code: '[0,3,5,[-1,6,-7,7][b%4]].map(x=>T(440,x))[(b+o)%4]',
     lines: [
-      'Try to keep it under 64 bytes, and Happy hacking!'
+      'Try to keep it under 64 bytes, and happy hacking!'
     ]
   },
 ];
@@ -113,6 +115,14 @@ function run() {
   gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
 
   oscillator.start();
+
+  window.addEventListener('blur', () => {
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+  });
+
+  window.addEventListener('focus', () => {
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  });
 
   // b is the bar number
   // i is the index of the cell
@@ -241,12 +251,12 @@ function run() {
       mc.push();
       mc.noStroke();
       if (bar === 0) {
-        mc.fill([0xff, 0x22, 0x44, 0.1]);
+        mc.fill([0xff, 0x22, 0x44, 0.2]);
       } else {
         if (orderCount < 2) {
-          mc.fill([2555, 255, 255, 0.1]);
+          mc.fill([2555, 255, 255, 0.2]);
         } else {
-          mc.fill([0xff, 0x22, 0x44, 0.1]);
+          mc.fill([0xff, 0x22, 0x44, 0.2]);
         }
         orderCount = (orderCount + 1) % 4;
       }
@@ -254,7 +264,7 @@ function run() {
       rect([beatSize*4, beatSize], [xPos, y+beatSize/2])
       mc.pop();
 
-      mc.strokeWeight(0.5);
+      mc.strokeWeight(2);
       for (let beat = 0; beat < 4; beat++) {
         const x = (bar % 2 === 0)
           ? beat * beatSize
@@ -269,6 +279,9 @@ function run() {
               ? [255, 255, 255, 1]
               : [0xff, 0x22, 0x44, 1];
             let r = beatSize / 2 / 2;
+            if (currentBeat === 0) {
+              r *= 1.5;
+            }
 
             if (lastValue === Infinity) {
               mc.noFill();
