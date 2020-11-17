@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "parcel index.html",
-    "build": "parcel build index.html --public-url https://francisrstokes.github.io/bito/"
+    "build": "parcel build index.html --public-url https://bito.live/"
   },
   "keywords": [],
   "author": "",
