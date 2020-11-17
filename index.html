@@ -92,6 +92,27 @@
       padding-bottom: 20px;
       justify-content: center;
     }
+
+    .bpm-controls {
+      color: #fff;
+      font-size: 25px;
+      display: flex;
+      justify-content: space-between;
+      width: 300px;
+      margin-top: 20px;
+    }
+
+    .bpm-controls > button {
+      background-color: #000;
+      border: 2px solid #fff;
+      color: #fff;
+      font-size: 25px;
+      width:45px;
+    }
+
+    #bpmDisplay::after {
+      content: " BPM";
+    }
   </style>
 </head>
 <body>
@@ -101,6 +122,12 @@
     </header>
 
     <canvas id="main" width="500" height="500"></canvas>
+
+    <div class="bpm-controls">
+      <button id="bpmDown">-</button>
+      <span id="bpmDisplay">360</span>
+      <button id="bpmUp">+</button>
+    </div>
 
     <div class="code-area">
       <div class="comment">

@@ -1,10 +1,10 @@
 const microcan = require('microcan-fp');
 
-// TODO
-// buffered calculation? fixed BPM?
-// Show indication when over 64 bytes (but don't block)
-
 const CHAR_LIMIT = 64;
+
+const inputEl = document.getElementById('codeInput');
+const bpmDisplayEl = document.getElementById('bpmDisplay');
+let targetBPM = Number(bpmDisplayEl.innerText);
 
 const tutorial = [
   {
@@ -92,6 +92,23 @@ const textSize = ctx.measureText('Click here to start');
 ctx.fillText('Click here to start', (w - textSize.width)/2, (h - textH)/2);
 canvas.addEventListener('click', run, { once: true });
 
+if (location.hash) {
+  const keyPairs = location.hash.slice(2).split('&').map(opt => opt.split('='));
+  keyPairs.forEach(kp => {
+    if (kp.length !== 2) return;
+    if (kp[0] === 'code') {
+      inputEl.value = decodeURIComponent(kp[1]);
+    }
+    if (kp[0] === 'bpm') {
+      const parsed = Number(kp[1]);
+      if (Number.isInteger(parsed) && kp[1] >= 60 && kp[1] <= 500) {
+        targetBPM = parsed;
+        bpmDisplayEl.innerText = targetBPM;
+      }
+    }
+  })
+}
+
 function run() {
   const waveTypes = [
     'triangle',
@@ -99,8 +116,6 @@ function run() {
     'sawtooth',
     'sine'
   ];
-
-  const inputEl = document.getElementById('codeInput');
 
   const audioCtx = new AudioContext();
 
@@ -133,14 +148,35 @@ function run() {
   // Infinities change wave type, and NaN or anything else represents no sound
   let updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
 
+  const updateURL = () => {
+    const escapedFn = encodeURIComponent(inputEl.value);
+    history.pushState(null, '', `#?bpm=${targetBPM}&code=${escapedFn}`);
+  }
+
   const setBitoFunction = code => {
     waveTypeIndex = 0;
     oscillator.type = waveTypes[waveTypeIndex];
     updateFn = new Function('b', 'i', 't', 'o', 'return ' + code);
-    const escapedFn = encodeURIComponent(code);
-    window.location.hash = escapedFn;
+    updateURL();
     inputEl.value = code;
   }
+
+  document.getElementById('bpmUp').addEventListener('click', () => {
+    targetBPM = Math.min(
+      targetBPM + 10,
+      500
+    );
+    bpmDisplayEl.innerText = targetBPM;
+    updateURL();
+  });
+  document.getElementById('bpmDown').addEventListener('click', () => {
+    targetBPM = Math.max(
+      targetBPM - 10,
+      60
+    );
+    bpmDisplayEl.innerText = targetBPM;
+    updateURL();
+  });
 
 
   const commentEl = document.querySelector('.comment');
@@ -162,10 +198,6 @@ function run() {
 
   // Inject the tone function
   window.T = (b, n) => b*(1.059463**n);
-
-  if (location.hash) {
-    inputEl.value = decodeURIComponent(location.hash.slice(1));
-  }
 
   const inputClasses = inputEl.classList;
   inputEl.addEventListener('keydown', e => {
@@ -199,7 +231,7 @@ function run() {
     const currentBar = Math.floor(cellIndex / 4);
     const currentBeat = cellIndex % 4;
 
-    if (i % 10 === 0) {
+    if (i % Math.round(3600/targetBPM) === 0) {
       let value;
       try {
         value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
@@ -275,7 +307,7 @@ function run() {
           mc.push();
 
           if (!Number.isNaN(lastValue)) {
-            const c = lastValue > 0
+            const c = lastValue > 440
               ? [255, 255, 255, 1]
               : [0xff, 0x22, 0x44, 1];
             let r = beatSize / 2 / 2;
