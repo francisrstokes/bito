@@ -78,6 +78,7 @@
       padding-top: 20px;
       padding-bottom: 20px;
       justify-content: center;
+      flex-direction: column;
     }
 
     footer {
@@ -113,12 +114,40 @@
     #bpmDisplay::after {
       content: " BPM";
     }
+
+    .envelope-controls {
+      background-color: #444;
+      display: flex;
+      color: white;
+      justify-content: space-evenly;
+      margin-top: 20px;
+      padding: 20px;
+      width: 500px;
+      align-items: center;
+    }
+
+    .under-text {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
   <main>
     <header>
-      B&nbsp;<span class="red-dot">.</span>&nbsp;I&nbsp;<span class="red-dot">.</span>&nbsp;T&nbsp;<span class="red-dot">.</span>&nbsp;O
+      <div>
+        B&nbsp;<span class="red-dot">.</span>&nbsp;I&nbsp;<span class="red-dot">.</span>&nbsp;T&nbsp;<span class="red-dot">.</span>&nbsp;O
+      </div>
+      <div class="under-text">
+        <span>Bar</span>
+        <span>Index</span>
+        <span>Time</span>
+        <span>Offset</span>
+      </div>
     </header>
 
     <canvas id="main" width="500" height="500"></canvas>
@@ -127,6 +156,30 @@
       <button id="bpmDown">-</button>
       <span id="bpmDisplay">360</span>
       <button id="bpmUp">+</button>
+    </div>
+
+    <div class="envelope-controls">
+      <label for="attackSlider">Attack</label>
+      <input
+        name="attackSlider"
+        id="attackSlider"
+        type="range"
+        min="0.01"
+        max="0.5"
+        value="0.25"
+        step="0.01"
+      />
+
+      <label for="decaySlider">Decay</label>
+      <input
+        name="decaySlider"
+        id="decaySlider"
+        type="range"
+        min="0.51"
+        max="1"
+        value="0.75"
+        step="0.01"
+      />
     </div>
 
     <div class="code-area">
