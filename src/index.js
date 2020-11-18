@@ -142,6 +142,29 @@ if (location.hash) {
 }
 
 function run() {
+  document.querySelector('.hint').classList.remove('hidden');
+  const commentEl = document.querySelector('.comment');
+  let tutorialPointer = 0;
+
+  const setComment = lines => {
+    commentEl.innerHTML = lines.map(line => (
+      `<div class="comment-line">${line}</div>`
+    )).join('');
+  };
+
+  setComment([
+    'Make music in 64 bytes!',
+    'Write a function that returns a frequency at a point in time',
+    'Click the hint button below for more information'
+  ]);
+
+  document.querySelector('.hint').addEventListener('click', () => {
+    const tut = tutorial[tutorialPointer];
+    setBitoFunction(tut.code);
+    setComment(tut.lines);
+    tutorialPointer = (tutorialPointer + 1) % tutorial.length;
+  });
+
   const waveTypes = [
     'triangle',
     'square',
@@ -229,18 +252,7 @@ function run() {
     mouseInCanvas = false;
   });
 
-  const commentEl = document.querySelector('.comment');
-  let tutorialPointer = 0;
-  document.querySelector('.hint').addEventListener('click', () => {
-    const tut = tutorial[tutorialPointer];
-    setBitoFunction(tut.code);
-    commentEl.innerHTML = tut.lines.map(line => (
-      `<div class="comment-line">${line}</div>`
-    )).join('');
-    tutorialPointer = (tutorialPointer + 1) % tutorial.length;
-  });
-
-
+  
   // Inject math functions into global scope
   Object.getOwnPropertyNames(Math).forEach(prop => {
     window[prop] = Math[prop];
