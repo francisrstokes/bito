@@ -1,9 +1,12 @@
 const microcan = require('microcan-fp');
 
 const CHAR_LIMIT = 64;
+const MAX_VOLUME = 0.1;
 
 const inputEl = document.getElementById('codeInput');
 const bpmDisplayEl = document.getElementById('bpmDisplay');
+const attackEl = document.getElementById('attackSlider');
+const decayEl = document.getElementById('decaySlider');
 let targetBPM = Number(bpmDisplayEl.innerText);
 
 const tutorial = [
@@ -101,9 +104,21 @@ if (location.hash) {
     }
     if (kp[0] === 'bpm') {
       const parsed = Number(kp[1]);
-      if (Number.isInteger(parsed) && kp[1] >= 60 && kp[1] <= 500) {
+      if (Number.isInteger(parsed) && parsed >= 60 && parsed <= 500) {
         targetBPM = parsed;
         bpmDisplayEl.innerText = targetBPM;
+      }
+    }
+    if (kp[0] === 'attack') {
+      const parsed = Number(kp[1]);
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 0.5) {
+        attackEl.value = parsed;
+      }
+    }
+    if (kp[0] === 'decay') {
+      const parsed = Number(kp[1]);
+      if (!Number.isNaN(parsed) && parsed >= 0.5 && parsed <= 1) {
+        decayEl.value = parsed;
       }
     }
   })
@@ -127,30 +142,28 @@ function run() {
   oscillator.type = waveTypes[0];
 
   oscillator.frequency.setValueAtTime(880.0, audioCtx.currentTime);
-  gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gainNode.gain.setValueAtTime(MAX_VOLUME, audioCtx.currentTime);
 
   oscillator.start();
 
   window.addEventListener('blur', () => {
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.disconnect();
   });
-
   window.addEventListener('focus', () => {
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.connect(audioCtx.destination);
   });
 
   // b is the bar number
   // i is the index of the cell
   // t is in seconds
   // o is the offset in the bar (the beat)
-
   // function should return a number representing a frequency
   // Infinities change wave type, and NaN or anything else represents no sound
   let updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
 
   const updateURL = () => {
     const escapedFn = encodeURIComponent(inputEl.value);
-    history.pushState(null, '', `#?bpm=${targetBPM}&code=${escapedFn}`);
+    history.pushState(null, '', `#?attack=${attackEl.value}&decay=${decayEl.value}&bpm=${targetBPM}&code=${escapedFn}`);
   }
 
   const setBitoFunction = code => {
@@ -177,6 +190,8 @@ function run() {
     bpmDisplayEl.innerText = targetBPM;
     updateURL();
   });
+  attackEl.addEventListener('change', updateURL);
+  decayEl.addEventListener('change', updateURL);
 
 
   const commentEl = document.querySelector('.comment');
@@ -205,7 +220,6 @@ function run() {
       setBitoFunction(e.target.value);
     }
 
-    console.log(e.target.value.length);
     if (e.target.value.length > CHAR_LIMIT) {
       inputClasses.add('over-limit');
     } else {
@@ -223,6 +237,12 @@ function run() {
   let waveTypeIndex = 0;
   let lastValue = 0;
 
+  let attackCurveQueued = false;
+  let decayCurveQueued = false;
+
+  
+
+  //i%=32,g=(a,b)=>i>=a&i<b+a,T(195,g(0,5)|g(6,7)?2:g(14,7)?7:g(22,7)?5:g(30,1)?0:m)
   const update = () => {
     mc.background([0, 0, 0, 1]);
     mc.noFill();
@@ -231,7 +251,28 @@ function run() {
     const currentBar = Math.floor(cellIndex / 4);
     const currentBeat = cellIndex % 4;
 
-    if (i % Math.round(3600/targetBPM) === 0) {
+    const beatPeriodFrames = Math.round(3600/targetBPM);
+    const beatPeriodT = (i % beatPeriodFrames) / beatPeriodFrames;
+    const attackStart = Number(attackEl.value);
+    const decayStart = Number(decayEl.value);
+
+
+    if (i % beatPeriodFrames === 0) {
+      attackCurveQueued = false;
+      decayCurveQueued = false;
+    }
+
+    if (!attackCurveQueued && beatPeriodT >= attackStart && beatPeriodT < 0.5) {
+      gainNode.gain.setTargetAtTime(MAX_VOLUME, audioCtx.currentTime, 0.035);
+      attackCurveQueued = true;
+    }
+
+    if (beatPeriodT >= decayStart && !decayCurveQueued) {
+      gainNode.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.035);
+      decayCurveQueued = true;
+    }
+
+    if (i % beatPeriodFrames === 0) {
       let value;
       try {
         value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
