@@ -8,6 +8,8 @@ const bpmDisplayEl = document.getElementById('bpmDisplay');
 const attackEl = document.getElementById('attackSlider');
 const decayEl = document.getElementById('decaySlider');
 let targetBPM = Number(bpmDisplayEl.innerText);
+let isMuted = false;
+let mouseInCanvas = false;
 
 const tutorial = [
   {
@@ -89,8 +91,8 @@ const circle = (r, position) => mc.drawEllipse(mc.circle(r, position));
 mc.fill([255, 255, 255, 1]);
 mc.noStroke();
 
-const textH = Math.floor(w/20);
-ctx.font = `${textH}px Courier`;
+const textH = Math.floor(w/15);
+ctx.font = `${textH}px Inconsolata`;
 const textSize = ctx.measureText('Click here to start');
 ctx.fillText('Click here to start', (w - textSize.width)/2, (h - textH)/2);
 canvas.addEventListener('click', run, { once: true });
@@ -193,10 +195,24 @@ function run() {
   attackEl.addEventListener('change', updateURL);
   decayEl.addEventListener('change', updateURL);
 
+  canvas.addEventListener('click', () => {
+    isMuted = !isMuted;
+    if (isMuted) {
+      gainNode.disconnect();
+    } else {
+      gainNode.connect(audioCtx.destination);
+    }
+  });
+  canvas.addEventListener('mouseenter', () => {
+    mouseInCanvas = true;
+  });
+  canvas.addEventListener('mouseleave', () => {
+    mouseInCanvas = false;
+  });
 
   const commentEl = document.querySelector('.comment');
   let tutorialPointer = 0;
-  canvas.addEventListener('click', () => {
+  document.querySelector('.comment').addEventListener('click', () => {
     const tut = tutorial[tutorialPointer];
     setBitoFunction(tut.code);
     commentEl.innerHTML = tut.lines.map(line => (
@@ -239,8 +255,6 @@ function run() {
 
   let attackCurveQueued = false;
   let decayCurveQueued = false;
-
-  
 
   //i%=32,g=(a,b)=>i>=a&i<b+a,T(195,g(0,5)|g(6,7)?2:g(14,7)?7:g(22,7)?5:g(30,1)?0:m)
   const update = () => {
@@ -375,6 +389,26 @@ function run() {
           mc.pop();
         }
       }
+    }
+
+    if (mouseInCanvas && !isMuted) {
+      mc.background([0,0,0,0.2]);
+
+      ctx.font = `${textH}px Inconsolata`;
+      mc.fill([255,255,255,1]);
+      const text = 'Mute';
+      const textSize = ctx.measureText(text);
+      ctx.fillText(text, (w - textSize.width)/2, (h - textH)/2);
+    }
+
+    if (isMuted) {
+      mc.background([0,0,0,0.2]);
+
+      ctx.font = `${textH}px Inconsolata`;
+      mc.fill([255,255,255,1]);
+      const text = 'Unmute';
+      const textSize = ctx.measureText(text);
+      ctx.fillText(text, (w - textSize.width)/2, (h - textH)/2);
     }
 
     i++;
