@@ -77,6 +77,12 @@ const tutorial = [
       'Try to keep it under 64 bytes, and happy hacking!'
     ]
   },
+  {
+    code: "T(440,'7_235_320_037_532_235_7_3_0_0'.split('')[i%32])",
+    lines: [
+      'Tetris (54 bytes)'
+    ]
+  },
 ];
 
 const w = 300;
