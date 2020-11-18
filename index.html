@@ -134,6 +134,16 @@
       font-size: 15px;
       color: #aaa;
     }
+
+    .hint {
+      color: #fff;
+      border: 1px solid white;
+      padding-top: 5px;
+      padding-bottom: 5px;
+      padding-left: 20px;
+      padding-right: 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -188,7 +198,7 @@
           Make music in 64 bytes!
         </div>
         <div class="comment-line">
-          Click this comment for help
+          Click the hint button below for more information
         </div>
       </div>
       <div class="code">
@@ -200,6 +210,7 @@
         value="[0,3,5,8].map(x=>T(110*((b+1)%4),x))[i%4]"
       />
     </div>
+    <div class="hint">HINT</div>
   </main>
   <footer>
     By &nbsp;<a href="https://twitter.com/fstokesman">@fstokesman</a> &nbsp;-&nbsp; Inspired by &nbsp;<a href="https://tixy.land">tixy.land</a>

@@ -158,10 +158,14 @@ function run() {
   oscillator.start();
 
   window.addEventListener('blur', () => {
-    gainNode.disconnect();
+    if (!isMuted) {
+      gainNode.disconnect();
+    }
   });
   window.addEventListener('focus', () => {
-    gainNode.connect(audioCtx.destination);
+    if (!isMuted) {
+      gainNode.connect(audioCtx.destination);
+    }
   });
 
   // b is the bar number
@@ -221,7 +225,7 @@ function run() {
 
   const commentEl = document.querySelector('.comment');
   let tutorialPointer = 0;
-  document.querySelector('.comment').addEventListener('click', () => {
+  document.querySelector('.hint').addEventListener('click', () => {
     const tut = tutorial[tutorialPointer];
     setBitoFunction(tut.code);
     commentEl.innerHTML = tut.lines.map(line => (
