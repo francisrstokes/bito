@@ -97,12 +97,21 @@ const textSize = ctx.measureText('Click here to start');
 ctx.fillText('Click here to start', (w - textSize.width)/2, (h - textH)/2);
 canvas.addEventListener('click', run, { once: true });
 
+const checkForCharLimit = () => {
+  if (inputEl.value.length > CHAR_LIMIT) {
+    inputEl.classList.add('over-limit');
+  } else {
+    inputEl.classList.remove('over-limit');
+  }
+}
+
 if (location.hash) {
   const keyPairs = location.hash.slice(2).split('&').map(opt => opt.split('='));
   keyPairs.forEach(kp => {
     if (kp.length !== 2) return;
     if (kp[0] === 'code') {
       inputEl.value = decodeURIComponent(kp[1]);
+      checkForCharLimit();
     }
     if (kp[0] === 'bpm') {
       const parsed = Number(kp[1]);
@@ -230,17 +239,11 @@ function run() {
   // Inject the tone function
   window.T = (b, n) => b*(1.059463**n);
 
-  const inputClasses = inputEl.classList;
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       setBitoFunction(e.target.value);
     }
-
-    if (e.target.value.length > CHAR_LIMIT) {
-      inputClasses.add('over-limit');
-    } else {
-      inputClasses.remove('over-limit');
-    }
+    checkForCharLimit();
   });
 
   const bars = 16;
