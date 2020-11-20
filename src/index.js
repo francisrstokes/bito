@@ -188,12 +188,12 @@ function run() {
 
   window.addEventListener('blur', () => {
     if (!isMuted) {
-      gainNode.disconnect();
+      pauseAudio();
     }
   });
   window.addEventListener('focus', () => {
     if (!isMuted) {
-      gainNode.connect(audioCtx.destination);
+      resumeAudio();
     }
   });
 
@@ -203,7 +203,7 @@ function run() {
   // o is the offset in the bar (the beat)
   // function should return a number representing a frequency
   // Infinities change wave type, and NaN or anything else represents no sound
-  let updateFn = new Function('b', 'i', 't', 'o', 'return ' + inputEl.value);
+  let updateFn; // = (b, i, t, o) => Frequency
 
   const updateURL = () => {
     const escapedFn = encodeURIComponent(inputEl.value);
@@ -213,10 +213,13 @@ function run() {
   const setBitoFunction = code => {
     waveTypeIndex = 0;
     oscillator.type = waveTypes[waveTypeIndex];
-    updateFn = new Function('b', 'i', 't', 'o', 'return ' + code);
+    const fnCode = `try { with (Math) { return ${code}; } } catch (e) { return 0; }`;
+    updateFn = new Function('b', 'i', 't', 'o', fnCode);
     updateURL();
     inputEl.value = code;
   }
+
+  setBitoFunction(inputEl.value);
 
   document.getElementById('bpmUp').addEventListener('click', () => {
     targetBPM = Math.min(
@@ -237,12 +240,15 @@ function run() {
   attackEl.addEventListener('change', updateURL);
   decayEl.addEventListener('change', updateURL);
 
+  const pauseAudio = () => audioCtx.suspend();
+  const resumeAudio = () => audioCtx.resume();
+
   canvas.addEventListener('click', () => {
     isMuted = !isMuted;
     if (isMuted) {
-      gainNode.disconnect();
+      pauseAudio();
     } else {
-      gainNode.connect(audioCtx.destination);
+      resumeAudio();
     }
   });
   canvas.addEventListener('mouseenter', () => {
@@ -250,12 +256,6 @@ function run() {
   });
   canvas.addEventListener('mouseleave', () => {
     mouseInCanvas = false;
-  });
-
-  
-  // Inject math functions into global scope
-  Object.getOwnPropertyNames(Math).forEach(prop => {
-    window[prop] = Math[prop];
   });
 
   // Inject the tone function
@@ -281,6 +281,9 @@ function run() {
   let attackCurveQueued = false;
   let decayCurveQueued = false;
 
+  let currentBar = 0;
+  let currentBeat = 0;
+
   //i%=32,g=(a,b)=>i>=a&i<b+a,T(195,g(0,5)|g(6,7)?2:g(14,7)?7:g(22,7)?5:g(30,1)?0:m)
   const update = () => {
     mc.background([0, 0, 0, 1]);
@@ -297,13 +300,11 @@ function run() {
       decayCurveQueued = false;
 
       cellIndex = (cellIndex + 1) % 64;
+      currentBar = Math.floor(cellIndex / 4);
+      currentBeat = cellIndex % 4;
 
       let value;
-      try {
-        value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
-      } catch (e) {
-        value = NaN;
-      }
+      value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
 
       let skip = false;
       if (Number.isNaN(value) || typeof value !== 'number') {
@@ -351,13 +352,10 @@ function run() {
       decayCurveQueued = true;
     }
 
-    const currentBar = Math.floor(cellIndex / 4);
-    const currentBeat = cellIndex % 4;
-    console.log(currentBeat);
 
     let orderCount = 0;
     for (let bar = 0; bar < bars; bar++) {
-      const y = floor(bar / 2) * beatSize;
+      const y = Math.floor(bar / 2) * beatSize;
 
       mc.push();
       mc.noStroke();
