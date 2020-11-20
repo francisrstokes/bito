@@ -287,31 +287,17 @@ function run() {
     mc.noFill();
     mc.stroke([0, 0, 0, 1]);
 
-    const currentBar = Math.floor(cellIndex / 4);
-    const currentBeat = cellIndex % 4;
-
     const beatPeriodFrames = Math.round(3600/targetBPM);
     const beatPeriodT = (i % beatPeriodFrames) / beatPeriodFrames;
     const attackStart = Number(attackEl.value);
     const decayStart = Number(decayEl.value);
 
-
-    if (i % beatPeriodFrames === 0) {
+    if (i > 0 && i % beatPeriodFrames === 0) {
       attackCurveQueued = false;
       decayCurveQueued = false;
-    }
 
-    if (!attackCurveQueued && beatPeriodT >= attackStart && beatPeriodT < 0.5) {
-      gainNode.gain.setTargetAtTime(MAX_VOLUME, audioCtx.currentTime, 0.035);
-      attackCurveQueued = true;
-    }
+      cellIndex = (cellIndex + 1) % 64;
 
-    if (beatPeriodT >= decayStart && !decayCurveQueued) {
-      gainNode.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.035);
-      decayCurveQueued = true;
-    }
-
-    if (i % beatPeriodFrames === 0) {
       let value;
       try {
         value = updateFn(currentBar, cellIndex, audioCtx.currentTime, currentBeat);
@@ -353,8 +339,21 @@ function run() {
       }
 
       lastValue = value;
-      cellIndex = (cellIndex + 1) % 64;
     }
+
+    if (!attackCurveQueued && beatPeriodT >= attackStart && beatPeriodT < 0.5) {
+      gainNode.gain.setTargetAtTime(MAX_VOLUME, audioCtx.currentTime, 0.035);
+      attackCurveQueued = true;
+    }
+
+    if (beatPeriodT >= decayStart && !decayCurveQueued) {
+      gainNode.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.035);
+      decayCurveQueued = true;
+    }
+
+    const currentBar = Math.floor(cellIndex / 4);
+    const currentBeat = cellIndex % 4;
+    console.log(currentBeat);
 
     let orderCount = 0;
     for (let bar = 0; bar < bars; bar++) {
